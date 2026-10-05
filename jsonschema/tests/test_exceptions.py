@@ -1054,6 +1054,48 @@ class TestErrorInitReprStr(TestCase):
         self.assertIn(repr(instance), str(error))
 
 
+class TestIteratorContext(TestCase):
+    def test_iterator_context_sets_parent(self):
+        """
+        Passing an iterator as context should still set parent on children.
+        See https://github.com/python-jsonschema/jsonschema/issues/1584
+        """
+        child1 = exceptions.ValidationError("child 1")
+        child2 = exceptions.ValidationError("child 2")
+        parent = exceptions.ValidationError(
+            "parent",
+            context=iter([child1, child2]),
+        )
+        self.assertIs(child1.parent, parent)
+        self.assertIs(child2.parent, parent)
+
+    def test_iterator_context_preserves_children(self):
+        """
+        The children from an iterator context should be retained.
+        """
+        child1 = exceptions.ValidationError("child 1")
+        child2 = exceptions.ValidationError("child 2")
+        parent = exceptions.ValidationError(
+            "parent",
+            context=iter([child1, child2]),
+        )
+        self.assertEqual(len(parent.context), 2)
+        self.assertIs(parent.context[0], child1)
+        self.assertIs(parent.context[1], child2)
+
+    def test_iterator_context_absolute_path(self):
+        """
+        Children of an iterator context should have correct absolute paths.
+        """
+        child = exceptions.ValidationError("child", path=["foo"])
+        parent = exceptions.ValidationError(
+            "parent",
+            path=["bar"],
+            context=iter([child]),
+        )
+        self.assertEqual(list(child.absolute_path), ["bar", "foo"])
+
+
 class TestHashable(TestCase):
     def test_hashable(self):
         {exceptions.ValidationError("")}

@@ -89,3 +89,20 @@ class TestFormatChecker(TestCase):
             repr(checker),
             "<FormatChecker checkers=['bar', 'baz', 'foo']>",
         )
+
+    def test_regex_deeply_nested_pattern_does_not_crash(self):
+        """
+        A deeply nested regex pattern that triggers RecursionError in
+        re.compile should be reported as invalid, not crash the validator.
+
+        See https://github.com/python-jsonschema/jsonschema/issues/1538
+        """
+        deeply_nested = "(" * 100000 + "a" + ")" * 100000
+        checker = FormatChecker()
+
+        # conforms should return False, not raise RecursionError
+        self.assertFalse(checker.conforms(instance=deeply_nested, format="regex"))
+
+        # check should raise FormatError, not RecursionError
+        with self.assertRaises(FormatError):
+            checker.check(instance=deeply_nested, format="regex")
